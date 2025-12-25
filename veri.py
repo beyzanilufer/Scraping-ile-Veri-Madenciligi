@@ -158,12 +158,13 @@ if 'Founded_Year' in df.columns:
     df['Age'] = df['Age'].where(df['Age'] > 0, pd.NA)  # Negatif yaşları temizle
 
 
-
+# Boş kalan (None veya NaN) tüm hücrelere "Null" metnini yazar
+df = df.fillna("Null")
 
 # VEYA CSV olarak kaydet (UTF-8-SIG ile)
-df.to_excel("fortune_500_detayli_veri4.xlsx", index=False, encoding='openpyxl')
+df.to_excel("fortune_500_detayli_veri5.xlsx", index=False)
 
 print("\n✅ Web Scraping Projesi Tamamlandı!")
 print(f"Toplam Çekilen Şirket Sayısı: {df.shape[0]}")
 print(f"Yeni Veri Boyutu: {df.shape}")
-print("Veri 'fortune_500_detayli_veri2.csv' olarak kaydedildi.")
+print("Veri 'fortune_500_detayli_veri5.xlsx' olarak kaydedildi.")
