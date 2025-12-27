@@ -97,7 +97,6 @@ for i, company in enumerate(company_data):
             infobox = detail_soup.find("table", {"class": "infobox"})
 
             founded_year = None
-            ceo_name = None
 
             if infobox:
                 # Infobox satırlarını döngüye al
@@ -112,22 +111,20 @@ for i, company in enumerate(company_data):
                         # Kuruluş Yılını Bulma
                         if "Founded" in header_text or "Kuruluş" in header_text:
                             founded_year = data_text.split('\n')[0].split(';')[0].replace('[', '').replace(']', '')
-                        # CEO Adını Bulma
-                        elif "CEO" in header_text:
-                            ceo_name = data_text.split('\n')[0]
+
 
             # Verileri ana sözlüğe ekle
             company['Founded_Year'] = founded_year
-            company['CEO'] = ceo_name
+
 
             # Sadece bir örneği gösterme
             if i < 5:
-                print(f"  ✅ {company['Company']}: Kuruluş: {founded_year}, CEO: {ceo_name}")
+                print(f"  ✅ {company['Company']}: Kuruluş: {founded_year}")
 
         except requests.RequestException as e:
             # Hata oluşursa (Zaman aşımı, sayfa bulunamaması vb.)
             company['Founded_Year'] = None
-            company['CEO'] = None
+
             if i < 3:
                 print(f"  ⚠️ {company['Company']} detayı çekilemedi.")
 
@@ -162,7 +159,7 @@ if 'Founded_Year' in df.columns:
 df = df.fillna("Null")
 
 # VEYA CSV olarak kaydet (UTF-8-SIG ile)
-df.to_excel("fortune_500_detayli_veri5.xlsx", index=False)
+df.to_excel("fortune_500_detayli_veri6 .xlsx", index=False)
 
 print("\n✅ Web Scraping Projesi Tamamlandı!")
 print(f"Toplam Çekilen Şirket Sayısı: {df.shape[0]}")
