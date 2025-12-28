@@ -117,176 +117,106 @@ if len(anomaliler) > 0:
                          'Age_Normalize', 'Cluster']].to_string(index=False))
 
 # ============================================================================
-# GÖRSELLEŞTİRME
+# SEKTÖR BAZLI ANOMALİ ANALİZİ
 # ============================================================================
+import seaborn as sns
 
+# Sadece anomalileri filtrele
+anomali_df = df[df['Cluster'] == -1]
+
+if not anomali_df.empty:
+    plt.figure(figsize=(14, 8))
+
+    # Sektörlere göre anomali sayılarını hesapla
+    sektor_counts = anomali_df['Industry'].value_counts()
+
+    # Görselleştirme
+    sns.barplot(x=sektor_counts.values, y=sektor_counts.index, palette='magma')
+
+    plt.title('🚨 SEKTÖR BAZLI ANOMALİ DAĞILIMI', fontsize=16, fontweight='bold')
+    plt.xlabel('Anomali Sayısı (Şirket)')
+    plt.ylabel('Sektör')
+    plt.grid(axis='x', linestyle='--', alpha=0.7)
+
+    # Sayıları barların üzerine ekle
+    for i, v in enumerate(sektor_counts.values):
+        plt.text(v + 0.1, i, str(v), color='black', fontweight='bold', va='center')
+
+    plt.tight_layout()
+    plt.show()
+
+    # Detaylı Tablo Çıktısı
+    print("\n📊 SEKTÖR BAZLI ANOMALİ ÖZETİ:")
+    print("-" * 40)
+    summary = anomali_df.groupby('Industry').agg({
+        'Company': 'count',
+        'Revenue_Normalize': 'mean',
+        'Employees_Normalize': 'mean'
+    }).rename(columns={'Company': 'Şirket Sayısı', 'Revenue_Normalize': 'Ort. Gelir (Norm)'})
+    print(summary.sort_values(by='Şirket Sayısı', ascending=False))
+# ============================================================================
+# DÜZENLENMİŞ VE TEMİZLENMİŞ DASHBOARD
+# ============================================================================
 plt.style.use('seaborn-v0_8-darkgrid')
-fig = plt.figure(figsize=(20, 12))
+fig = plt.figure(figsize=(22, 12))
 
-# Renk paleti oluştur
-n_clusters = int(df['Cluster'].max())
-colors = plt.cm.tab10(np.linspace(0, 1, n_clusters + 1))
+# Kaç küme olduğunu belirle (Anomalileri -1 hariç tut)
+mevcut_kumeler = [c for c in sorted(df['Cluster'].unique()) if c != -1]
+n_clusters = len(mevcut_kumeler)
+colors = plt.cm.tab10(np.linspace(0, 1, n_clusters))
 
-# 1. 3D Scatter Plot
-ax1 = fig.add_subplot(2, 3, 1, projection='3d')
-for cluster in range(-1, n_clusters + 1):
-    cluster_data = df[df['Cluster'] == cluster]
-    if cluster == -1:
-        ax1.scatter(cluster_data['Revenue_Normalize'],
-                   cluster_data['Employees_Normalize'],
-                   cluster_data['Age_Normalize'],
-                   c='red', marker='x', s=200, linewidths=3,
-                   label='Anomali', alpha=0.8)
-    else:
-        ax1.scatter(cluster_data['Revenue_Normalize'],
-                   cluster_data['Employees_Normalize'],
-                   cluster_data['Age_Normalize'],
-                   c=[colors[cluster]], s=100, alpha=0.7,
-                   label=f'Küme {cluster}')
+# 1. PANEL: 3D Görünüm
+ax1 = fig.add_subplot(1, 2, 1, projection='3d')
 
-ax1.set_xlabel('Revenue (Normalize)', fontsize=10, fontweight='bold')
-ax1.set_ylabel('Employees (Normalize)', fontsize=10, fontweight='bold')
-ax1.set_zlabel('Age (Normalize)', fontsize=10, fontweight='bold')
-ax1.set_title('3D DBSCAN Kümeleme Sonuçları', fontsize=14, fontweight='bold', pad=20)
-ax1.legend(loc='upper left', fontsize=8)
-ax1.view_init(elev=20, azim=45)
+# Önce Anomalileri Çiz
+anomali_verisi = df[df['Cluster'] == -1]
+if not anomali_verisi.empty:
+    ax1.scatter(anomali_verisi['Revenue_Normalize'], anomali_verisi['Employees_Normalize'],
+               anomali_verisi['Age_Normalize'], c='red', marker='x', s=150,
+               linewidths=3, label='Anomali', alpha=0.9, zorder=5)
 
-# 2. Revenue vs Employees
-ax2 = fig.add_subplot(2, 3, 2)
-for cluster in range(-1, n_clusters + 1):
-    cluster_data = df[df['Cluster'] == cluster]
-    if cluster == -1:
-        ax2.scatter(cluster_data['Revenue_Normalize'],
-                   cluster_data['Employees_Normalize'],
-                   c='red', marker='x', s=200, linewidths=3,
-                   label='Anomali', alpha=0.8, zorder=5)
-    else:
-        ax2.scatter(cluster_data['Revenue_Normalize'],
-                   cluster_data['Employees_Normalize'],
-                   c=[colors[cluster]], s=100, alpha=0.7,
-                   label=f'Küme {cluster}')
+# Sonra Sadece İçinde Veri Olan Kümeleri Çiz
+for i, kume_id in enumerate(mevcut_kumeler):
+    c_data = df[df['Cluster'] == kume_id]
+    ax1.scatter(c_data['Revenue_Normalize'], c_data['Employees_Normalize'],
+               c_data['Age_Normalize'], s=70, alpha=0.6,
+               label=f'Küme {kume_id}', c=[colors[i]])
 
-ax2.set_xlabel('Revenue (Normalize)', fontsize=11, fontweight='bold')
-ax2.set_ylabel('Employees (Normalize)', fontsize=11, fontweight='bold')
-ax2.set_title('Revenue vs Employees', fontsize=13, fontweight='bold')
-ax2.legend(loc='best', fontsize=8)
-ax2.grid(True, alpha=0.3)
+ax1.set_title('3D ŞİRKET DAĞILIMI VE ANOMALİLER', fontsize=15, fontweight='bold')
+ax1.set_xlabel('Revenue (Norm)')
+ax1.set_ylabel('Employees (Norm)')
+ax1.set_zlabel('Age (Norm)')
+ax1.legend(loc='upper left')
 
-# 3. Revenue vs Age
-ax3 = fig.add_subplot(2, 3, 3)
-for cluster in range(-1, n_clusters + 1):
-    cluster_data = df[df['Cluster'] == cluster]
-    if cluster == -1:
-        ax3.scatter(cluster_data['Revenue_Normalize'],
-                   cluster_data['Age_Normalize'],
-                   c='red', marker='x', s=200, linewidths=3,
-                   label='Anomali', alpha=0.8, zorder=5)
-    else:
-        ax3.scatter(cluster_data['Revenue_Normalize'],
-                   cluster_data['Age_Normalize'],
-                   c=[colors[cluster]], s=100, alpha=0.7,
-                   label=f'Küme {cluster}')
+# 2. PANEL: Küme Dağılımı (Bar Chart)
+ax2 = fig.add_subplot(2, 2, 2)
+counts = df['Cluster'].value_counts().sort_index()
+# Etiketleri ve renkleri ayarla
+labels = ['Anomali' if i == -1 else f'Küme {i}' for i in counts.index]
+bar_colors = ['red' if i == -1 else '#3498db' for i in counts.index]
 
-ax3.set_xlabel('Revenue (Normalize)', fontsize=11, fontweight='bold')
-ax3.set_ylabel('Age (Normalize)', fontsize=11, fontweight='bold')
-ax3.set_title('Revenue vs Age', fontsize=13, fontweight='bold')
-ax3.legend(loc='best', fontsize=8)
-ax3.grid(True, alpha=0.3)
+bars = ax2.bar(labels, counts.values, color=bar_colors, edgecolor='black', alpha=0.8)
+ax2.bar_label(bars, padding=3, fontweight='bold')
+ax2.set_title(f'TOPLAM {n_clusters} KÜME VE ANOMALİ DAĞILIMI', fontsize=13, fontweight='bold')
 
-# 4. Employees vs Age
-ax4 = fig.add_subplot(2, 3, 4)
-for cluster in range(-1, n_clusters + 1):
-    cluster_data = df[df['Cluster'] == cluster]
-    if cluster == -1:
-        ax4.scatter(cluster_data['Employees_Normalize'],
-                   cluster_data['Age_Normalize'],
-                   c='red', marker='x', s=200, linewidths=3,
-                   label='Anomali', alpha=0.8, zorder=5)
-    else:
-        ax4.scatter(cluster_data['Employees_Normalize'],
-                   cluster_data['Age_Normalize'],
-                   c=[colors[cluster]], s=100, alpha=0.7,
-                   label=f'Küme {cluster}')
-
-ax4.set_xlabel('Employees (Normalize)', fontsize=11, fontweight='bold')
-ax4.set_ylabel('Age (Normalize)', fontsize=11, fontweight='bold')
-ax4.set_title('Employees vs Age', fontsize=13, fontweight='bold')
-ax4.legend(loc='best', fontsize=8)
-ax4.grid(True, alpha=0.3)
-
-# 5. Küme Dağılımı (Bar Chart)
-ax5 = fig.add_subplot(2, 3, 5)
-cluster_counts = df['Cluster'].value_counts().sort_index()
-bar_colors = ['red' if x == -1 else colors[x] for x in cluster_counts.index]
-bars = ax5.bar(range(len(cluster_counts)), cluster_counts.values, color=bar_colors, alpha=0.7, edgecolor='black')
-
-# Bar üstüne değerleri yaz
-for i, (bar, count) in enumerate(zip(bars, cluster_counts.values)):
-    height = bar.get_height()
-    ax5.text(bar.get_x() + bar.get_width()/2., height,
-            f'{int(count)}',
-            ha='center', va='bottom', fontsize=10, fontweight='bold')
-
-ax5.set_xlabel('Küme ID', fontsize=11, fontweight='bold')
-ax5.set_ylabel('Şirket Sayısı', fontsize=11, fontweight='bold')
-ax5.set_title('Küme Dağılımı', fontsize=13, fontweight='bold')
-ax5.set_xticks(range(len(cluster_counts)))
-ax5.set_xticklabels(['Anomali' if x == -1 else f'Küme {x}'
-                     for x in cluster_counts.index], rotation=45, ha='right')
-ax5.grid(True, alpha=0.3, axis='y')
-
-# 6. İstatistiksel Özet Tablosu
-ax6 = fig.add_subplot(2, 3, 6)
-ax6.axis('off')
-
-# Tablo verilerini hazırla
-table_data = []
-table_data.append(['📊 GENEL İSTATİSTİKLER', ''])
-table_data.append(['─'*30, '─'*15])
-table_data.append(['Toplam Şirket', f'{len(df)}'])
-table_data.append(['Küme Sayısı', f'{n_clusters}'])
-table_data.append(['Anomali Sayısı', f'{len(anomaliler)}'])
-table_data.append(['Anomali Oranı', f'{len(anomaliler)/len(df)*100:.2f}%'])
-table_data.append(['', ''])
-table_data.append(['⚙️ PARAMETRELER', ''])
-table_data.append(['─'*30, '─'*15])
-table_data.append(['Eps (Yarıçap)', f'{Eps}'])
-table_data.append(['MinPts', f'{MinPts}'])
-
-table = ax6.table(cellText=table_data, cellLoc='left',
-                 colWidths=[0.7, 0.3], loc='center',
-                 bbox=[0, 0.2, 1, 0.8])
+# 3. PANEL: Analiz Özeti Tablosu
+ax3 = fig.add_subplot(2, 2, 4)
+ax3.axis('off')
+summary_data = [
+    ["Toplam Şirket", len(df)],
+    ["Bulunan Küme Sayısı", n_clusters],
+    ["Tespit Edilen Anomali", len(df[df['Cluster'] == -1])],
+    ["Anomali Oranı", f"%{len(df[df['Cluster'] == -1])/len(df)*100:.2f}"],
+    ["Eps (Yarıçap)", Eps],
+    ["MinPts (Min Nokta)", MinPts]
+]
+table = ax3.table(cellText=summary_data, colLabels=["Parametre", "Değer"],
+                  loc='center', cellLoc='left', bbox=[0.1, 0.2, 0.8, 0.7])
 table.auto_set_font_size(False)
-table.set_fontsize(11)
-table.scale(1, 2.5)
+table.set_fontsize(12)
+ax3.set_title('ANALİZ İSTATİSTİKLERİ', fontsize=13, fontweight='bold')
 
-# Hücre renklerini ayarla
-for i in range(len(table_data)):
-    for j in range(2):
-        cell = table[(i, j)]
-        if i in [0, 6]:  # Başlık satırları
-            cell.set_facecolor('#4CAF50')
-            cell.set_text_props(weight='bold', color='white')
-        elif i in [1, 7]:  # Ayırıcı satırlar
-            cell.set_facecolor('#E0E0E0')
-        else:
-            cell.set_facecolor('#F5F5F5')
-        cell.set_edgecolor('black')
-        cell.set_linewidth(1.5)
-
-ax6.set_title('Analiz Özeti', fontsize=14, fontweight='bold', pad=20)
-
-plt.suptitle('🎯 DBSCAN KÜMELEMESİ VE ANOMALİ TESPİTİ ANALİZİ',
-             fontsize=16, fontweight='bold', y=0.98)
-plt.tight_layout(rect=[0, 0, 1, 0.97])
-
-# Grafikleri kaydet
-plt.savefig('dbscan_analiz.png', dpi=300, bbox_inches='tight')
-print(f"\n💾 Grafik kaydedildi: dbscan_analiz.png")
-
+plt.suptitle('🎯 FORTUNE 500 DBSCAN ANOMALİ ANALİZ RAPORU', fontsize=20, fontweight='bold', y=0.96)
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.show()
-
-print("\n✅ Analiz ve görselleştirme tamamlandı!")
-
-
 
